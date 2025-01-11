@@ -1,0 +1,4 @@
+boot.bin
+full_kernel.bin
+kernel_entry.o
+kernel.o

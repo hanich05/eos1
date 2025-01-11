@@ -1,12 +1,22 @@
+KERNEL_LOCATION equ 0x1000
+
 sector_1:
 [org 0x7c00]
+
     mov [drive_num], dl
 
-    ; tiny mode
+    ; tiny model
     mov ax, 0x00
+    mov es, ax
     mov ds, ax
     mov ss, ax
-    mov es, ax
+    mov bp, 0x8000
+    mov sp, bp
+
+    ; call BIOS interrupt 0x10 (ah=0x00) - switch to text mode (clears screen)
+    mov ah, 0x00
+    mov al, 0x03
+    int 0x10
 
     ; call BIOS interrupt 0x13 (ah=0x02) - read sectors with a CHS address
     mov al, [sectors_count] ; sectors count
@@ -16,19 +26,19 @@ sector_1:
     mov dh, 0x00            ; head
     mov dl, [drive_num]     ; drive number
     ; mov es, 0x00          ; buffer segment - already set to 0x00
-    mov bx, 0x7e00          ; buffer segment offset
+    mov bx, KERNEL_LOCATION ; buffer segment offset (read to KERNEL_LOCATION)
     mov ah, 0x02
     int 0x13
     ; if a read error ocours, carry flag is set
     jc read_error
-    ; sectores read are saved in al reg
+    ; sectors read amount is saved in al reg
     ; if (al != sectors_count-1) then not all sectors were read
     inc al
     cmp al, [sectors_count]
     jne read_error
 
     ; no read errors
-    jmp sector_2
+    jmp read_success
 
 read_error:
     ; error ocoured. print error message
@@ -44,22 +54,8 @@ read_err_print_loop:
     ; infinite loop
     jmp $
 
-drive_num:
-    db 0x00
-read_err_str:
-    db "read error", 0x00
-
-    ; padding
-    times 0x1fd-($-sector_1) db 0x00
-sectors_count:
-    ; will be set after compilation to indicate how many sectors exist.
-    ; byte 0x1fd (509) in the binary file.
-    db 0x00
-
-    ; magic master-boot-record bytes
-    db 0x55, 0xaa
-
-sector_2:
+read_success:
+    ; print success message
     mov bx, read_suc_str
     mov ah, 0x0e
 read_suc_print_loop:
@@ -69,8 +65,53 @@ read_suc_print_loop:
     cmp byte [bx], 0x00
     jne read_suc_print_loop
     
-    jmp $
+    ; switch to protected mode
+    ; load_gdt
+    cli
+    lgdt [gdt_descriptor]
+    ; change last bit of cr0 to 1
+    mov eax, cr0
+    or eax, 1
+    mov cr0, eax
+    ; update cs register by preforming a far jump
+    jmp CODE_SEG:protected_mode_start
 
+read_err_str:
+    db "BIOS hard disk read error", 0x0a, 0x0d, 0x00
 read_suc_str:
-    db "read success", 0x00
-    times 0x200-($-sector_2) db 0x33
+    db "BIOS hard disk read success", 0x0a, 0x0d, 0x00
+drive_num:
+    db 0x00
+    
+%include "boot/gdt.s"
+
+[bits 32]
+protected_mode_start:
+    ; set up segments and stack for kernel
+    mov ax, DATA_SEG
+    mov ds, ax
+    mov ss, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    mov ebp, 0x90000
+    mov esp, ebp
+    ; go to kernel (kernel_entry)
+    jmp KERNEL_LOCATION
+
+
+[bits 16]
+    ; padding
+    times 0x1fd-($-sector_1) db 0x00
+sectors_count:
+    ; will be set after compilation to indicate how many sectors exist.
+    ; byte 0x1fd (509) in the binary file.
+    db 0x00
+
+    ; magic master-boot-record bytes
+    ; bytes 0x1fe and 0x1ff
+    db 0x55, 0xaa
+
+
+
+; ... kernel goes here ...
