@@ -29,6 +29,7 @@ sector_1:
     mov bx, KERNEL_LOCATION ; buffer segment offset (read to KERNEL_LOCATION)
     mov ah, 0x02
     int 0x13
+    
     ; if a read error ocours, carry flag is set
     jc read_error
     ; sectors read amount is saved in al reg
@@ -38,32 +39,34 @@ sector_1:
     jne read_error
 
     ; no read errors
-    jmp read_success
+    ; set read_res
+    mov byte [read_res], 0x01
+    ; print success message
+    mov bx, read_suc_str
+    jmp print_read_res_str
 
 read_error:
     ; error ocoured. print error message
     mov bx, read_err_str
+
+print_read_res_str:
+    ; call BIOS interrupt 0x10 (ah=0x0e) - print char
     mov ah, 0x0e
-read_err_print_loop:
+print_read_res_str_loop:
     mov al, [bx]
     int 0x10
     inc bx
     cmp byte [bx], 0x00
-    jne read_err_print_loop
+    jne print_read_res_str_loop
     
+    ; jump if read succedded
+    cmp byte [read_res], 0x00
+    jne read_success
+
     ; infinite loop
     jmp $
 
 read_success:
-    ; print success message
-    mov bx, read_suc_str
-    mov ah, 0x0e
-read_suc_print_loop:
-    mov al, [bx]
-    int 0x10
-    inc bx
-    cmp byte [bx], 0x00
-    jne read_suc_print_loop
     
     ; switch to protected mode
     ; load_gdt
@@ -76,6 +79,8 @@ read_suc_print_loop:
     ; update cs register by preforming a far jump
     jmp CODE_SEG:protected_mode_start
 
+read_res:
+    db 0x00 ; will be set to 1 if read succeded
 read_err_str:
     db "BIOS hard disk read error", 0x0a, 0x0d, 0x00
 read_suc_str:
