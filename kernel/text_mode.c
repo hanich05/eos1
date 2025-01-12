@@ -68,3 +68,33 @@ void print_string(char* str, int8_t col) {
         i++;
     }
 }
+
+void print_hex32(int32_t x) {
+    int32_t a = x;
+    for (int32_t i = 0; i < 8; i++) {
+        int8_t half_byte_val = ((a >> 28) & 0x0f);
+        char c;
+        if (half_byte_val < 10) {
+            c = '0' + half_byte_val;
+        }else {
+            c = 'A' + half_byte_val-10;
+        }
+        print_char(c, TM_FORE_COL_WHITE);
+        a = a << 4;
+    }
+}
+
+void print_hex8(int8_t x) {
+    int8_t a = x;
+    for (int32_t i = 0; i < 2; i++) {
+        int8_t half_byte_val = ((a >> 4) & 0x0f);
+        char c;
+        if (half_byte_val < 10) {
+            c = '0' + half_byte_val;
+        }else {
+            c = 'A' + half_byte_val-10;
+        }
+        print_char(c, TM_FORE_COL_WHITE);
+        a = a << 4;
+    }
+}
