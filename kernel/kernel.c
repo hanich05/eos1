@@ -1,4 +1,11 @@
+#include "text_mode.h"
+#include "../libc/memmove.h"
+
 void kmain() {
-    *((char*)0xb8000) = 'Q';
+    text_mode_init();
+    clear_screen();
+
+    print_string("Kernel initialised successfully\n", TM_FORE_COL_WHITE);
+    
     return;
 }

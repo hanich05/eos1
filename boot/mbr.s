@@ -13,12 +13,17 @@ sector_1:
     mov bp, 0x8000
     mov sp, bp
 
-    ; call BIOS interrupt 0x10 (ah=0x00) - switch to text mode (clears screen)
+    ; call BIOS interrupt 0x10 ah=0x00 - switch to text mode (clears screen)
     mov ah, 0x00
     mov al, 0x03
     int 0x10
 
-    ; call BIOS interrupt 0x13 (ah=0x02) - read sectors with a CHS address
+    ; call BIOS interrupt 0x10 ah=0x01 - set cursor shape
+    mov cx, 0x2607 ; invisible cursor
+    mov ah, 0x01
+    int 0x10
+
+    ; call BIOS interrupt 0x13 ah=0x02 - read sectors with a CHS address
     mov al, [sectors_count] ; sectors count
     dec al                  ; sector 1 was already read by the BIOS (this sector)
     mov ch, 0x00            ; cylinder
@@ -29,7 +34,7 @@ sector_1:
     mov bx, KERNEL_LOCATION ; buffer segment offset (read to KERNEL_LOCATION)
     mov ah, 0x02
     int 0x13
-    
+
     ; if a read error ocours, carry flag is set
     jc read_error
     ; sectors read amount is saved in al reg
@@ -50,7 +55,7 @@ read_error:
     mov bx, read_err_str
 
 print_read_res_str:
-    ; call BIOS interrupt 0x10 (ah=0x0e) - print char
+    ; call BIOS interrupt 0x10 ah=0x0e - print char
     mov ah, 0x0e
 print_read_res_str_loop:
     mov al, [bx]
@@ -82,9 +87,9 @@ read_success:
 read_res:
     db 0x00 ; will be set to 1 if read succeded
 read_err_str:
-    db "BIOS hard disk read error", 0x0a, 0x0d, 0x00
+    db "BIOS hard disk read error", 0x00
 read_suc_str:
-    db "BIOS hard disk read success", 0x0a, 0x0d, 0x00
+    db "BIOS hard disk read success", 0x00
 drive_num:
     db 0x00
     
