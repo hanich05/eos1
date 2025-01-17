@@ -7,7 +7,7 @@
 
 typedef struct __attribute__((packed)) {
     char ch;
-    int8_t col;
+    uint8_t col;
 } tm_char_t;
 
 #define TM_SCREEN ((tm_char_t*)0xb8000)
@@ -25,6 +25,7 @@ static void move_lines_up() {
 static void wrap_curs() {
     if (curs_pos.x >= SCREEN_WIDTH) {
         curs_pos.x -= SCREEN_WIDTH;
+        curs_pos.y++;
     }
     while (curs_pos.y >= SCREEN_HEIGHT) {
         move_lines_up();
@@ -41,7 +42,7 @@ void clear_screen() {
     memset(TM_SCREEN, 0x00, 2*SCREEN_WIDTH*SCREEN_HEIGHT);
 }
 
-void print_char(char ch, int8_t col) {
+void print_char(char ch, uint8_t col) {
     wrap_curs();
     switch (ch) {
         case '\n':
@@ -61,7 +62,7 @@ void print_char(char ch, int8_t col) {
     }
 }
 
-void print_string(char* str, int8_t col) {
+void print_string(char* str, uint8_t col) {
     int32_t i = 0;
     while (str[i] != '\0') {
         print_char(str[i], col);
@@ -69,7 +70,7 @@ void print_string(char* str, int8_t col) {
     }
 }
 
-void print_hex32(int32_t x) {
+void print_hex32(int32_t x, uint8_t col) {
     int32_t a = x;
     for (int32_t i = 0; i < 8; i++) {
         int8_t half_byte_val = ((a >> 28) & 0x0f);
@@ -79,12 +80,12 @@ void print_hex32(int32_t x) {
         }else {
             c = 'A' + half_byte_val-10;
         }
-        print_char(c, TM_FORE_COL_WHITE);
+        print_char(c, col);
         a = a << 4;
     }
 }
 
-void print_hex8(int8_t x) {
+void print_hex8(int8_t x, uint8_t col) {
     int8_t a = x;
     for (int32_t i = 0; i < 2; i++) {
         int8_t half_byte_val = ((a >> 4) & 0x0f);
@@ -94,7 +95,7 @@ void print_hex8(int8_t x) {
         }else {
             c = 'A' + half_byte_val-10;
         }
-        print_char(c, TM_FORE_COL_WHITE);
+        print_char(c, col);
         a = a << 4;
     }
 }

@@ -4,6 +4,7 @@
 
 ; System_V_ABI calling convention
 ; void* memset(void* s, int8_t c, int32_t n)
+align 0x04
 memset:
     push ebp
     mov ebp, esp

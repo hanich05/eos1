@@ -1,3 +1,5 @@
+#pragma once
+
 #include <stdint.h>
 
 #define TM_FORE_COL_BLACK 0x00
@@ -25,7 +27,7 @@
 
 void text_mode_init();
 void clear_screen();
-void print_char(char ch, int8_t col);
-void print_string(char* str, int8_t col);
-void print_hex32(int32_t x);
-void print_hex8(int8_t x);
+void print_char(char ch, uint8_t col);
+void print_string(char* str, uint8_t col);
+void print_hex32(int32_t x, uint8_t col);
+void print_hex8(int8_t x, uint8_t col);

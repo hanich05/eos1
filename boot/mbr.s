@@ -77,7 +77,7 @@ read_success:
     ; load_gdt
     cli
     lgdt [gdt_descriptor]
-    ; change last bit of cr0 to 1
+    ; change last bit of cr0 to 1 - this bit indicates wether or not the system is in protected mode
     mov eax, cr0
     or eax, 1
     mov cr0, eax

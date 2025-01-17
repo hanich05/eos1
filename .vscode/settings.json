@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "text_mode.h": "c",
+        "memmove.h": "c",
+        "isr.h": "c"
+    }
+}

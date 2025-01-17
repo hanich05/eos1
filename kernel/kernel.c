@@ -1,5 +1,4 @@
 #include "text_mode.h"
-#include "../libc/memmove.h"
 
 void kmain() {
     text_mode_init();
