@@ -7,7 +7,7 @@ os.bin: boot/boot.bin kernel/full_kernel.bin set_sectors_count_byte.bash pad_las
 	bash "./pad_last_sector.bash"
 	bash "./set_sectors_count_byte.bash"
 
-boot/boot.bin: boot/mbr.s boot/gdt.s
+boot/boot.bin: boot/mbr.s
 	nasm $(DEBUG?) $< -o $@ -f bin
 
 kernel/full_kernel.bin: kernel/kernel_entry.o kernel/kernel.o kernel/text_mode.o libc/memmove.o libc/memset.o

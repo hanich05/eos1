@@ -72,17 +72,9 @@ print_read_res_str_loop:
     jmp $
 
 read_success:
-    
-    ; switch to protected mode
-    ; load_gdt
-    cli
-    lgdt [gdt_descriptor]
-    ; change last bit of cr0 to 1 - this bit indicates wether or not the system is in protected mode
-    mov eax, cr0
-    or eax, 1
-    mov cr0, eax
-    ; update cs register by preforming a far jump
-    jmp CODE_SEG:protected_mode_start
+    ; jmp to the kernel setup code (kernel_entry)
+    jmp KERNEL_LOCATION
+
 
 read_res:
     db 0x00 ; will be set to 1 if read succeded
@@ -92,25 +84,7 @@ read_suc_str:
     db "BIOS hard disk read success", 0x00
 drive_num:
     db 0x00
-    
-%include "boot/gdt.s"
 
-[bits 32]
-protected_mode_start:
-    ; set up segments and stack for kernel
-    mov ax, DATA_SEG
-    mov ds, ax
-    mov ss, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
-    mov ebp, 0x90000
-    mov esp, ebp
-    ; go to kernel (kernel_entry)
-    jmp KERNEL_LOCATION
-
-
-[bits 16]
     ; padding
     times 0x1fd-($-sector_1) db 0x00
 sectors_count:
