@@ -25,9 +25,16 @@
 
 #define TM_BACK_COL_BRIGHT 0x80
 
+struct u8_vec2 {
+    uint8_t x;
+    uint8_t y;
+};
+extern struct u8_vec2 curs_pos;
+
 void text_mode_init();
 void clear_screen();
 void print_char(char ch, uint8_t col);
 void print_string(char* str, uint8_t col);
 void print_hex32(int32_t x, uint8_t col);
 void print_hex8(int8_t x, uint8_t col);
+void print_memory_block(uint32_t from, uint32_t to);

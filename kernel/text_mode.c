@@ -12,10 +12,7 @@ typedef struct __attribute__((packed)) {
 
 #define TM_SCREEN ((tm_char_t*)0xb8000)
 
-static struct {
-    uint8_t x;
-    uint8_t y;
-} curs_pos;
+struct u8_vec2 curs_pos;
 
 static void move_lines_up() {
     memmove(TM_SCREEN, &(TM_SCREEN[SCREEN_WIDTH]), 2*SCREEN_WIDTH*(SCREEN_HEIGHT-1));
@@ -97,5 +94,22 @@ void print_hex8(int8_t x, uint8_t col) {
         }
         print_char(c, col);
         a = a << 4;
+    }
+}
+
+void print_memory_block(uint32_t from, uint32_t to) {
+    uint8_t* memptr = (uint8_t*)(from & 0xfffffff0);
+
+    while ((uint32_t)memptr < to) {
+        print_char('\n', 0);
+        print_hex32(memptr, TM_FORE_COL_BLUE);
+        print_string("    ", 0);
+        
+        for (uint8_t j = 0; j < 16; j++) {
+            print_hex8(*memptr, TM_FORE_COL_WHITE);
+            print_char(' ', 0);
+            if (j%4 == 3) print_char(' ', 0);
+            memptr++;
+        }
     }
 }

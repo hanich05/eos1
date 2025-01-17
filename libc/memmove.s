@@ -1,7 +1,6 @@
 [bits 32]
 
 [global memmove]
-
 ; System_V_ABI calling convention
 ; void* memmove(void* dest, const void* src, int32_t n)
 align 0x04

@@ -1,5 +1,5 @@
 [ ] inerrupts     (ISRs, lidt)
 [ ] enable paging (PDs, PTs, CR3)
-    [ ] move the GDT to a safe page
-        and update code accordingly
-        if needed
+[v] move the GDT to a safe page
+    and update code accordingly
+    if needed
