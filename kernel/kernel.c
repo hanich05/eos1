@@ -1,13 +1,21 @@
 #include "text_mode.h"
-#include "interrupts/isr.h"
+#include "interrupts/isrs.h"
+#include "../drivers/ps2/ps2.h"
 
 void kmain() {
     text_mode_init();
     clear_screen();
 
-    print_string("Kernel initialised successfully", TM_FORE_COL_GRAY);
+    print_string("Kernel initialized successfully", TM_FORE_COL_GRAY);
 
     isrs_intall();
+    print_string("\nInterrupts initialized successfully", TM_FORE_COL_GRAY);
+    
+    uint8_t ps2_init_val = ps2_init();
+    print_char('\n', 0);
+    print_hex8(ps2_init_val, TM_FORE_COL_BLUE);
+    print_char('\n', 0);
+    print_bin8(*((uint8_t*)&ps2_state), TM_FORE_COL_MAGENTA);
 
     // print_char('\n', 0);
     // print_hex32((uint32_t)&int_handler, TM_FORE_COL_GREEN);

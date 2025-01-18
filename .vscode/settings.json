@@ -2,6 +2,10 @@
     "files.associations": {
         "text_mode.h": "c",
         "memmove.h": "c",
-        "isr.h": "c"
+        "isr.h": "c",
+        "pic.h": "c",
+        "ps2.h": "c",
+        "io.h": "c",
+        "irqs.h": "c"
     }
 }

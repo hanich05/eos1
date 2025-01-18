@@ -1,5 +1,8 @@
 #pragma once
 
+#include "../isrs.h"
+#include <stdint.h>
+
 #define IRQ0    32
 #define IRQ1    (IRQ0+1)
 #define IRQ2    (IRQ0+2)
@@ -17,4 +20,9 @@
 #define IRQ14   (IRQ8+6)
 #define IRQ15   (IRQ8+7)
 
-void isrs_intall();
+
+/// @brief Convert an interrupt number to an IRQ number
+/// @return -1 if not an IRQ, otherwise the IRQ number.
+int8_t int_to_irq(uint8_t interrupt);
+uint8_t irq_handler(uint8_t irq, struct registers_t* regs);
+void irqs_install();

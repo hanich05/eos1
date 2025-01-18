@@ -113,3 +113,12 @@ void print_memory_block(uint32_t from, uint32_t to) {
         }
     }
 }
+
+void print_bin8(int8_t x, uint8_t col) {
+    int8_t a = x;
+    for (int32_t i = 0; i < 8; i++) {
+        int8_t bit = ((a >> 7) & 1);
+        print_char('0'+bit, col);
+        a = a << 1;
+    }
+}
