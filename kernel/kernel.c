@@ -16,6 +16,10 @@ void kmain() {
     print_hex8(ps2_init_val, TM_FORE_COL_BLUE);
     print_char('\n', 0);
     print_bin8(*((uint8_t*)&ps2_state), TM_FORE_COL_MAGENTA);
+    print_char('\n', 0);
+    print_hex8(ps2_state.first_port_device_id[0], TM_FORE_COL_MAGENTA); print_char(' ', 0); print_hex8(ps2_state.first_port_device_id[1], TM_FORE_COL_MAGENTA);
+    print_char('\n', 0);
+    print_hex8(ps2_state.second_port_device_id[0], TM_FORE_COL_MAGENTA); print_char(' ', 0); print_hex8(ps2_state.second_port_device_id[1], TM_FORE_COL_MAGENTA);
 
     // print_char('\n', 0);
     // print_hex32((uint32_t)&int_handler, TM_FORE_COL_GREEN);

@@ -54,12 +54,24 @@ uint8_t irq_handler(uint8_t irq, struct registers_t* regs) {
             irq0_handler();
             handled = 1;
             break;
-        case 1: // keyboard interrupt
+        case 1: { // ps2 first port interrupt
             uint8_t val = inb(0x60);
             print_char('\n', 0);
             print_hex8(val, TM_FORE_COL_BROWN);
             handled = 1;
             break;
+        }
+        case 4:{ // COM1 (mouse?)
+            print_string("\nMouse?", TM_FORE_COL_GRAY);
+            break;
+        }
+        case 12: { // ps2 second port interrupt
+            uint8_t val = inb(0x60);
+            print_char('\n', 0);
+            print_hex8(val, TM_FORE_COL_BROWN);
+            handled = 1;
+            break;
+        }
     }
 
     pic_send_eoi((uint8_t)irq);
