@@ -6,6 +6,7 @@
         "pic.h": "c",
         "ps2.h": "c",
         "io.h": "c",
-        "irqs.h": "c"
+        "irqs.h": "c",
+        "timer.h": "c"
     }
 }

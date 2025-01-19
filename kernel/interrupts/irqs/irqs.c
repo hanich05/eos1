@@ -2,6 +2,7 @@
 #include "../../../libc/io.h"
 #include "../../../drivers/pic/pic.h"
 #include "timer/timer.h"
+#include "../../../drivers/ps2/ps2_interface.h"
 #include "../../text_mode.h"
 #include <stdint.h>
 
@@ -55,9 +56,7 @@ uint8_t irq_handler(uint8_t irq, struct registers_t* regs) {
             handled = 1;
             break;
         case 1: { // ps2 first port interrupt
-            uint8_t val = inb(0x60);
-            print_char('\n', 0);
-            print_hex8(val, TM_FORE_COL_BROWN);
+            irq1_handler();
             handled = 1;
             break;
         }
@@ -66,9 +65,7 @@ uint8_t irq_handler(uint8_t irq, struct registers_t* regs) {
             break;
         }
         case 12: { // ps2 second port interrupt
-            uint8_t val = inb(0x60);
-            print_char('\n', 0);
-            print_hex8(val, TM_FORE_COL_BROWN);
+            irq12_handler();
             handled = 1;
             break;
         }

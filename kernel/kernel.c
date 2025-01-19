@@ -1,6 +1,7 @@
 #include "text_mode.h"
 #include "interrupts/isrs.h"
-#include "../drivers/ps2/ps2.h"
+#include "../drivers/ps2/ps2_interface.h"
+#include "../drivers/ps2/ps2_keyboard/ps2k.h"
 
 void kmain() {
     text_mode_init();
@@ -14,12 +15,8 @@ void kmain() {
     uint8_t ps2_init_val = ps2_init();
     print_char('\n', 0);
     print_hex8(ps2_init_val, TM_FORE_COL_BLUE);
-    print_char('\n', 0);
-    print_bin8(*((uint8_t*)&ps2_state), TM_FORE_COL_MAGENTA);
-    print_char('\n', 0);
-    print_hex8(ps2_state.first_port_device_id[0], TM_FORE_COL_MAGENTA); print_char(' ', 0); print_hex8(ps2_state.first_port_device_id[1], TM_FORE_COL_MAGENTA);
-    print_char('\n', 0);
-    print_hex8(ps2_state.second_port_device_id[0], TM_FORE_COL_MAGENTA); print_char(' ', 0); print_hex8(ps2_state.second_port_device_id[1], TM_FORE_COL_MAGENTA);
+
+    ps2_keyboard_device_driver_install();
 
     // print_char('\n', 0);
     // print_hex32((uint32_t)&int_handler, TM_FORE_COL_GREEN);

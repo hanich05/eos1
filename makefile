@@ -10,16 +10,22 @@ os.bin: boot/boot.bin kernel/full_kernel.bin set_sectors_count_byte.bash pad_las
 boot/boot.bin: boot/mbr.s
 	nasm $(DEBUG?) $< -o $@ -f bin
 
-kernel/full_kernel.bin: kernel/kernel_entry.o kernel/kernel.o drivers/ps2/ps2.o drivers/pic/pic.o kernel/interrupts/irqs/timer/timer.o kernel/interrupts/irqs/irqs.o kernel/interrupts/isrs.o kernel/interrupts/isr_stubs.o kernel/interrupts/idt.o kernel/text_mode.o libc/io.o libc/memmove.o libc/memset.o
+kernel/full_kernel.bin: kernel/kernel_entry.o kernel/kernel.o drivers/ps2/ps2_keyboard/ps2k.o drivers/ps2/ps2_interface.o drivers/ps2/ps2.o drivers/pic/pic.o kernel/interrupts/irqs/timer/timer.o kernel/interrupts/irqs/irqs.o kernel/interrupts/isrs.o kernel/interrupts/isr_stubs.o kernel/interrupts/idt.o kernel/text_mode.o libc/io.o libc/memmove.o libc/memset.o
 	$(LD) -Ttext 0x1000 $^ --oformat binary -o $@
 
 kernel/kernel_entry.o: kernel/kernel_entry.s kernel/gdt.s
 	nasm $(DEBUG?) $< -f elf -o $@
 
-kernel/kernel.o: kernel/kernel.c kernel/interrupts/isrs.h kernel/text_mode.h
+kernel/kernel.o: kernel/kernel.c kernel/text_mode.h kernel/interrupts/isrs.h drivers/ps2/ps2_interface.h drivers/ps2/ps2_keyboard/ps2k.h
 	$(CC) $(DEBUG?) -ffreestanding -m32 -g -c $< -o $@
 
-drivers/ps2/ps2.o: drivers/ps2/ps2.c drivers/ps2/ps2.h kernel/interrupts/irqs/timer/timer.h
+drivers/ps2/ps2_keyboard/ps2k.o: drivers/ps2/ps2_keyboard/ps2k.c drivers/ps2/ps2_keyboard/ps2k.h drivers/ps2/ps2_interface.h kernel/text_mode.h
+	$(CC) $(DEBUG?) -ffreestanding -m32 -g -c $< -o $@
+
+drivers/ps2/ps2_interface.o: drivers/ps2/ps2_interface.c drivers/ps2/ps2_interface.h drivers/ps2/ps2.h libc/io.h
+	$(CC) $(DEBUG?) -ffreestanding -m32 -g -c $< -o $@
+
+drivers/ps2/ps2.o: drivers/ps2/ps2.c drivers/ps2/ps2.h libc/io.h kernel/interrupts/irqs/timer/timer.h
 	$(CC) $(DEBUG?) -ffreestanding -m32 -g -c $< -o $@
 
 drivers/pic/pic.o: drivers/pic/pic.c
@@ -28,7 +34,7 @@ drivers/pic/pic.o: drivers/pic/pic.c
 kernel/interrupts/irqs/timer/timer.o: kernel/interrupts/irqs/timer/timer.c kernel/interrupts/irqs/timer/timer.h
 	$(CC) $(DEBUG?) -ffreestanding -m32 -g -c $< -o $@
 
-kernel/interrupts/irqs/irqs.o: kernel/interrupts/irqs/irqs.c kernel/interrupts/irqs/irqs.h kernel/interrupts/irqs/timer/timer.h kernel/interrupts/isrs.h libc/io.h drivers/pic/pic.h kernel/text_mode.h
+kernel/interrupts/irqs/irqs.o: kernel/interrupts/irqs/irqs.c kernel/interrupts/irqs/irqs.h libc/io.h drivers/pic/pic.h kernel/interrupts/irqs/timer/timer.h drivers/ps2/ps2_interface.h kernel/text_mode.h
 	$(CC) $(DEBUG?) -ffreestanding -m32 -g -c $< -o $@
 
 kernel/interrupts/isrs.o: kernel/interrupts/isrs.c kernel/interrupts/isrs.h kernel/gdt.h kernel/interrupts/idt.h kernel/interrupts/irqs/irqs.h kernel/text_mode.h

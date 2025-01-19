@@ -4,13 +4,37 @@
 #include "../../kernel/text_mode.h"
 #include <stdint.h>
 
-
+uint32_t ps2_read_timeout;
+uint32_t ps2_write_timeout;
 struct ps2_state ps2_state;
 
 
 struct ps2_status_reg ps2_read_status_reg() {
     uint8_t sr = inb(PS2_STATUS_REG);
     return *((struct ps2_status_reg*)&sr);
+}
+
+struct ps2_controller_config ps2_read_controller_config() {
+    uint8_t cc = ps2_responsive_send_cmd(0x20);
+    return *((struct ps2_controller_config*)&cc);
+}
+
+struct ps2_controller_output_port ps2_read_controller_output_port() {
+    uint8_t cop = ps2_responsive_send_cmd(0xd0);
+    return *((struct ps2_controller_output_port*)&cop);
+}
+
+void ps2_write_controller_config(struct ps2_controller_config cc) {
+    ps2_send_cmd_arg(0x60, *((uint8_t*)&cc));
+}
+
+void ps2_write_to_controller_output_port(struct ps2_controller_output_port cop) {
+
+    ps2_wait_for_write();
+    outb(PS2_CMD_REG, 0xd1);
+    ps2_wait_for_write();
+    ps2_wait_for_empty_output_buffer();
+    outb(PS2_DATA_PORT, *((uint8_t*)&cop));
 }
 
 
@@ -25,8 +49,8 @@ uint8_t ps2_wait_for_read_with_timeout() {
     struct ps2_status_reg sr;
     uint32_t start_tsb = ticks_since_boot;
 
-    // wait until output-buffer-status is full with timeout of PS2_READ_TIMEOUT
-    while ((ticks_since_boot - start_tsb) < PS2_READ_TIMEOUT) {
+    // wait until output-buffer-status is full with timeout of ps2_read_timeout
+    while ((ticks_since_boot - start_tsb) < ps2_read_timeout) {
         // get status reg
         sr = ps2_read_status_reg();
         
@@ -59,8 +83,8 @@ uint8_t ps2_wait_for_write_with_timeout() {
     struct ps2_status_reg sr;
     uint32_t start_tsb = ticks_since_boot;
 
-    // wait until input-buffer-status is empty with timeout of PS2_WRITE_TIMEOUT
-    while ((ticks_since_boot - start_tsb) < PS2_WRITE_TIMEOUT) {
+    // wait until input-buffer-status is empty with timeout of ps2_write_timeout
+    while ((ticks_since_boot - start_tsb) < ps2_write_timeout) {
         // get status reg
         sr = ps2_read_status_reg();
         
@@ -99,10 +123,6 @@ uint8_t ps2_responsive_send_cmd(uint8_t cmd) {
 uint8_t ps2_ram_read_byte_0() {
     return ps2_responsive_send_cmd(0x20);
 }
-struct ps2_controller_config ps2_read_controller_config() {
-    uint8_t cc = ps2_responsive_send_cmd(0x20);
-    return *((struct ps2_controller_config*)&cc);
-}
 
 uint8_t ps2_ram_read_byte_n(uint8_t n) {
     // there are only addresses 0x00 to 0x1f in PS2's internal RAM
@@ -114,9 +134,6 @@ uint8_t ps2_ram_read_byte_n(uint8_t n) {
 void ps2_ram_write_byte_0(uint8_t byte) {
     ps2_send_cmd_arg(0x60, byte);
 }
-void ps2_write_controller_config(struct ps2_controller_config cc) {
-    ps2_send_cmd_arg(0x60, *((uint8_t*)&cc));
-}
 
 void ps2_ram_write_byte_n(uint8_t n, uint8_t byte) {
     // there are only addresses 0x00 to 0x1f in PS2's internal RAM
@@ -125,12 +142,26 @@ void ps2_ram_write_byte_n(uint8_t n, uint8_t byte) {
     ps2_send_cmd_arg(0x20+n, byte);
 }
 
+
+void ps2_disable_first_ps2_port() {
+    ps2_send_cmd(0xad);
+}
+
 void ps2_disable_second_ps2_port() {
     ps2_send_cmd(0xa7);
 }
 
+void ps2_enable_first_ps2_port() {
+    ps2_send_cmd(0xae);
+}
+
 void ps2_enable_second_ps2_port() {
     ps2_send_cmd(0xa8);
+}
+
+
+uint8_t ps2_test_first_ps2_port() {
+    return ps2_responsive_send_cmd(0xab);
 }
 
 uint8_t ps2_test_second_ps2_port() {
@@ -141,19 +172,9 @@ uint8_t ps2_test_ps2_contoller() {
     return ps2_responsive_send_cmd(0xaa);
 }
 
-uint8_t ps2_test_first_ps2_port() {
-    return ps2_responsive_send_cmd(0xab);
-}
 
 // 0xac - diagnostic dump (read all bytes of internal ram)
 
-void ps2_disable_first_ps2_port() {
-    ps2_send_cmd(0xad);
-}
-
-void ps2_enable_first_ps2_port() {
-    ps2_send_cmd(0xae);
-}
 
 uint8_t ps2_read_controller_input_port() {
     return ps2_responsive_send_cmd(0xc0);
@@ -165,19 +186,6 @@ void ps2_copy_input_port_low_to_status_high() {
 
 void ps2_copy_input_port_high_to_status_high() {
     ps2_send_cmd(0xc2);
-}
-
-struct ps2_controller_output_port ps2_read_controller_output_port() {
-    uint8_t cop = ps2_responsive_send_cmd(0xd0);
-    return *((struct ps2_controller_output_port*)&cop);
-}
-
-void ps2_write_to_controller_output_port(struct ps2_controller_output_port cop) {
-    ps2_wait_for_write();
-    outb(PS2_CMD_REG, 0xd1);
-    ps2_wait_for_write();
-    ps2_wait_for_empty_output_buffer();
-    outb(PS2_DATA_PORT, *((uint8_t*)&cop));
 }
 
 /*
@@ -198,6 +206,7 @@ uint8_t ps2_write_to_second_ps2_port_input_buffer(uint8_t byte) {
     ps2_send_cmd_arg(0xd4, byte);
 }
 */
+
 
 void pulse_output_lines_low(uint8_t mask) {
     ps2_send_cmd(0xf0 | (mask & 0x0f));
@@ -328,6 +337,7 @@ void ps2_reset_second_port() {
 void ps2_get_first_port_device_id() {
     uint8_t response;
 
+    ps2_state.first_port_long_device_id = 0;
     ps2_state.first_port_device_id[0] = 0x00;
     ps2_state.first_port_device_id[1] = 0x00;
 
@@ -357,6 +367,7 @@ void ps2_get_first_port_device_id() {
 
     // get second device-id byte (with time out beacuse it may not arrive)
     if (ps2_wait_for_read_with_timeout() == 0) {
+        ps2_state.first_port_long_device_id = 1;
         ps2_state.first_port_device_id[1] = inb(PS2_DATA_PORT);
     }
 
@@ -373,6 +384,7 @@ void ps2_get_first_port_device_id() {
 void ps2_get_second_port_device_id() {
     uint8_t response;
 
+    ps2_state.second_port_long_device_id = 0;
     ps2_state.second_port_device_id[0] = 0x00;
     ps2_state.second_port_device_id[1] = 0x00;
 
@@ -402,6 +414,7 @@ void ps2_get_second_port_device_id() {
 
     // get second device-id byte (with time out beacuse it may not arrive)
     if (ps2_wait_for_read_with_timeout() == 0) {
+        ps2_state.second_port_long_device_id = 1;
         ps2_state.second_port_device_id[1] = inb(PS2_DATA_PORT);
     }
 
@@ -417,6 +430,9 @@ void ps2_get_second_port_device_id() {
 
 uint8_t ps2_init() {
     struct ps2_controller_config cc;
+
+    ps2_read_timeout  = 3;
+    ps2_write_timeout = 3;
     
     // TODO: how tf do i disable/enable usb legacy support???
 
