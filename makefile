@@ -19,7 +19,7 @@ kernel/kernel_entry.o: kernel/kernel_entry.s kernel/gdt.s
 kernel/kernel.o: kernel/kernel.c kernel/text_mode.h kernel/interrupts/isrs.h drivers/ps2/ps2.h drivers/ps2/ps2_keyboard/ps2k.h
 	$(CC) $(DEBUG?) -ffreestanding -m32 -g -c $< -o $@
 
-drivers/ps2/ps2_keyboard/ps2k.o: drivers/ps2/ps2_keyboard/ps2k.c drivers/ps2/ps2_keyboard/ps2k.h drivers/ps2/ps2.h kernel/text_mode.h
+drivers/ps2/ps2_keyboard/ps2k.o: drivers/ps2/ps2_keyboard/ps2k.c drivers/ps2/ps2_keyboard/ps2k.h drivers/ps2/ps2.h libc/memmove.h kernel/text_mode.h
 	$(CC) $(DEBUG?) -ffreestanding -m32 -g -c $< -o $@
 
 drivers/ps2/ps2.o: drivers/ps2/ps2.c drivers/ps2/ps2.h libc/io.h kernel/interrupts/irqs/timer/timer.h

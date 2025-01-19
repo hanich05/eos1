@@ -122,11 +122,11 @@ static uint8_t ps2_ram_read_byte_n(uint8_t n);
 static void ps2_ram_write_byte_0(uint8_t byte);
 static void ps2_ram_write_byte_n(uint8_t n, uint8_t byte);
 
-// only if 2 PS2 ports supported
 static void ps2_disable_first_ps2_port();
-static void ps2_disable_second_ps2_port();
 // only if 2 PS2 ports supported
+static void ps2_disable_second_ps2_port();
 static void ps2_enable_first_ps2_port();
+// only if 2 PS2 ports supported
 static void ps2_enable_second_ps2_port();
 
 /// @returns 0x55 = test passed ; 0xfc = test failed
@@ -154,6 +154,21 @@ static uint8_t ps2_send_to_first_port(uint8_t byte);
 /// only if second port is working
 /// @returns 1 if timed-out, otherwise 0
 static uint8_t ps2_send_to_second_port(uint8_t byte);
+
+/// only if first port is working
+/// @returns 1 if timed-out, otherwise 0
+static uint8_t ps2_first_port_diable_scanning();
+/// only if 2 PS2 ports supported
+/// only if second port is working
+/// @returns 1 if timed-out, otherwise 0
+static uint8_t ps2_second_port_diable_scanning();
+/// only if first port is working
+/// @returns 1 if timed-out, otherwise 0
+static uint8_t ps2_first_port_enable_scanning();
+/// only if 2 PS2 ports supported
+/// only if second port is working
+/// @returns 1 if timed-out, otherwise 0
+static uint8_t ps2_second_port_enable_scanning();
 
 /// waits for 0xfa to arrive in PS2_DATA_PORT
 static void ps2_wait_for_ack();
@@ -384,6 +399,19 @@ static uint8_t ps2_send_to_second_port(uint8_t byte) {
     return 0;
 }
 
+static uint8_t ps2_first_port_diable_scanning() {
+    return ps2_send_to_first_port(0xf5);
+}
+static uint8_t ps2_second_port_diable_scanning() {
+    return ps2_send_to_second_port(0xf5);
+}
+static uint8_t ps2_first_port_enable_scanning() {
+    return ps2_send_to_first_port(0xf4);
+}
+static uint8_t ps2_second_port_enable_scanning() {
+    return ps2_send_to_second_port(0xf4);
+}
+
 static void ps2_wait_for_ack() {
     uint8_t r;
     do {
@@ -484,7 +512,7 @@ static void ps2_get_first_port_device_id() {
     ps2_state.first_port_device_id[1] = 0x00;
 
     // send Disable-Scanning command
-    if (ps2_send_to_first_port(0xf5) != 0) {
+    if (ps2_first_port_diable_scanning() != 0) {
         // timed out
         ps2_state.first_port_working = 0;
         ps2_state.first_port_timed_out = 1;
@@ -514,7 +542,7 @@ static void ps2_get_first_port_device_id() {
     }
 
     // send Enable-Scanning command
-    if (ps2_send_to_first_port(0xf4) != 0) {
+    if (ps2_first_port_enable_scanning() != 0) {
         // timed out
         ps2_state.first_port_working = 0;
         ps2_state.first_port_timed_out = 1;
@@ -530,7 +558,7 @@ static void ps2_get_second_port_device_id() {
     ps2_state.second_port_device_id[1] = 0x00;
 
     // send Disable-Scanning command
-    if (ps2_send_to_second_port(0xf5) != 0) {
+    if (ps2_second_port_diable_scanning() != 0) {
         // timed out
         ps2_state.second_port_working = 0;
         ps2_state.second_port_timed_out = 1;
@@ -560,7 +588,7 @@ static void ps2_get_second_port_device_id() {
     }
 
     // send Enable-Scanning command
-    if (ps2_send_to_second_port(0xf4) != 0) {
+    if (ps2_second_port_enable_scanning() != 0) {
         // timed out
         ps2_state.second_port_working = 0;
         ps2_state.second_port_timed_out = 1;
@@ -571,8 +599,8 @@ static void ps2_get_second_port_device_id() {
 uint8_t ps2_init() {
     struct ps2_controller_config cc;
 
-    ps2_read_timeout  = 3;
-    ps2_write_timeout = 3;
+    ps2_read_timeout  = 1;
+    ps2_write_timeout = 1;
     
     // TODO: how tf do i disable/enable usb legacy support???
 
@@ -732,12 +760,13 @@ void irq1_handler() {
     uint8_t data = inb(PS2_DATA_PORT);
     if (ps2_first_device_driver == ps2_device_drivers_amount) {
         ps2_first_device_driver = device_find_driver(ps2_state.first_port_long_device_id, ps2_state.first_port_device_id);
-        if (ps2_first_device_driver == ps2_device_drivers_amount) return;
+        if (ps2_first_device_driver == ps2_device_drivers_amount) {
+            print_string("\nreceived ", TM_FORE_COL_GRAY);
+            print_hex8(data, TM_FORE_COL_BLUE);
+            print_string(" from ps2 device 1 (no device driver yet)", TM_FORE_COL_GRAY);
+        }
     }
     ps2_device_drivers[ps2_first_device_driver]->irq_handler(0, data);
-    if (data != 0xee) {
-        ps2_device_drivers[ps2_first_device_driver]->send_echo(0);
-    }
 }
 
 // ps2 second device
@@ -745,12 +774,13 @@ void irq12_handler() {
     uint8_t data = inb(PS2_DATA_PORT);
     if (ps2_second_device_driver == ps2_device_drivers_amount) {
         ps2_second_device_driver = device_find_driver(ps2_state.second_port_long_device_id, ps2_state.second_port_device_id);
-        if (ps2_second_device_driver == ps2_device_drivers_amount) return;
+        if (ps2_second_device_driver == ps2_device_drivers_amount) {
+            print_string("\nreceived ", TM_FORE_COL_GRAY);
+            print_hex8(data, TM_FORE_COL_BLUE);
+            print_string(" from ps2 device 2 (no device driver yet)", TM_FORE_COL_GRAY);
+        }
     }
     ps2_device_drivers[ps2_second_device_driver]->irq_handler(1, data);
-    if (data != 0xee) {
-        ps2_device_drivers[ps2_second_device_driver]->send_echo(1);
-    }
 }
 
 void ps2_set_read_timeout(uint32_t to) {
@@ -810,6 +840,13 @@ uint8_t ps2_test_device(uint8_t device) {
     }
     // device does not exist
     return 2;
+}
+
+uint8_t ps2_diable_scanning(uint8_t device) {
+    ps2_send_byte(device, 0xf5);
+}
+uint8_t ps2_enable_scanning(uint8_t device) {
+    ps2_send_byte(device, 0xf4);
 }
 
 void ps2_declare_echo_success(uint8_t device) {
