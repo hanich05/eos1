@@ -44,18 +44,18 @@ uint8_t ps2_send_byte(uint8_t device, uint8_t byte);
 /// @returns 1 on time-out, otherwise 0
 uint8_t ps2_receive_byte(uint8_t* byte);
 
-void ps2_enable_device(uint8_t device);
-void ps2_disable_device(uint8_t device);
+void ps2_enable_port(uint8_t port);
+void ps2_disable_port(uint8_t port);
 /// @brief 
 /// @param device 
-/// @return 2 if device does not exists, 1 if failed, 0 if passed
-uint8_t ps2_test_device(uint8_t device);
+/// @return 2 if port does not exists (not 1 or 0), 1 if failed, 0 if passed
+uint8_t ps2_test_port(uint8_t port);
 
 /// @param device The device number (0 or 1)
-/// @returns 1 on time-out, otherwise 0
+/// @returns 2 if device does not exist, 1 on time-out, otherwise 0
 uint8_t ps2_diable_scanning(uint8_t device);
 /// @param device The device number (0 or 1)
-/// @returns 1 on time-out, otherwise 0
+/// @returns 2 if device does not exist, 1 on time-out, otherwise 0
 uint8_t ps2_enable_scanning(uint8_t device);
 
 /// @brief Should be called by ps2 device drivers when an echo sent by it's send_echo sent a response
