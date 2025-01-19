@@ -735,6 +735,9 @@ void irq1_handler() {
         if (ps2_first_device_driver == ps2_device_drivers_amount) return;
     }
     ps2_device_drivers[ps2_first_device_driver]->irq_handler(0, data);
+    if (data != 0xee) {
+        ps2_device_drivers[ps2_first_device_driver]->send_echo(0);
+    }
 }
 
 // ps2 second device
@@ -744,7 +747,10 @@ void irq12_handler() {
         ps2_second_device_driver = device_find_driver(ps2_state.second_port_long_device_id, ps2_state.second_port_device_id);
         if (ps2_second_device_driver == ps2_device_drivers_amount) return;
     }
-    ps2_device_drivers[ps2_second_device_driver]->irq_handler(0, data);
+    ps2_device_drivers[ps2_second_device_driver]->irq_handler(1, data);
+    if (data != 0xee) {
+        ps2_device_drivers[ps2_second_device_driver]->send_echo(1);
+    }
 }
 
 void ps2_set_read_timeout(uint32_t to) {
@@ -804,4 +810,10 @@ uint8_t ps2_test_device(uint8_t device) {
     }
     // device does not exist
     return 2;
+}
+
+void ps2_declare_echo_success(uint8_t device) {
+    print_string("\ndevice ", TM_FORE_COL_GRAY);
+    print_hex8(device, TM_FORE_COL_GREEN);
+    print_string(" declared echo success", TM_FORE_COL_GRAY);
 }

@@ -9,7 +9,9 @@
 struct ps2_device_driver {
     uint8_t long_device_id  : 1;
     uint8_t device_id[2];
+    // when the device echos back the handler should call 
     void (*send_echo)(uint8_t device);
+    // shoult return 1 on time-out or 0 on success
     uint8_t (*irq_handler)(uint8_t device, uint8_t data);
 };
 
@@ -51,3 +53,7 @@ void ps2_disable_device(uint8_t device);
 /// @param device 
 /// @return 2 if device does not exists, 1 if failed, 0 if passed
 uint8_t ps2_test_device(uint8_t device);
+
+/// @brief Should be called by ps2 device drivers when an echo sent by it's send_echo sent a response
+/// @param device The device number (0 or 1)
+void ps2_declare_echo_success(uint8_t device);
