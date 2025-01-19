@@ -188,9 +188,12 @@ static void ps2_get_second_port_device_id();
 
 uint8_t ps2_init();
 
+static void ps2_echo_intervaled_callback();
+
 
 static uint32_t ps2_read_timeout;
 static uint32_t ps2_write_timeout;
+static uint32_t ps2_echo_intervaled_callback_uid;
 static struct ps2_state ps2_state;
 static struct ps2_device_driver* ps2_device_drivers[PS2_MAX_DEVICE_DRIVERS];
 static uint16_t ps2_device_drivers_amount = 0;
@@ -599,8 +602,9 @@ static void ps2_get_second_port_device_id() {
 uint8_t ps2_init() {
     struct ps2_controller_config cc;
 
-    ps2_read_timeout  = 1;
-    ps2_write_timeout = 1;
+    ps2_read_timeout  = PS2_DEFAULT_READ_TIMEOUT;
+    ps2_write_timeout = PS2_DEFAULT_WRITE_TIMEOUT;
+    ps2_echo_intervaled_callback_uid = 0; // doesn't exist yet
     
     // TODO: how tf do i disable/enable usb legacy support???
 
@@ -717,6 +721,9 @@ uint8_t ps2_init() {
     }
     ps2_write_controller_config(cc);
 
+    // set intervaled callback
+    ps2_echo_intervaled_callback_uid = install_intervaled_callback(&ps2_echo_intervaled_callback, PS2_DEFAULT_ECHO_INTERVAL, 0);
+
     // init success
     return 0;
 }
@@ -753,34 +760,6 @@ static uint16_t device_find_driver(uint8_t long_device_id, uint8_t* device_id) {
         }
     }
     return ps2_device_drivers_amount;
-}
-
-// ps2 first device
-void irq1_handler() {
-    uint8_t data = inb(PS2_DATA_PORT);
-    if (ps2_first_device_driver == ps2_device_drivers_amount) {
-        ps2_first_device_driver = device_find_driver(ps2_state.first_port_long_device_id, ps2_state.first_port_device_id);
-        if (ps2_first_device_driver == ps2_device_drivers_amount) {
-            print_string("\nreceived ", TM_FORE_COL_GRAY);
-            print_hex8(data, TM_FORE_COL_BLUE);
-            print_string(" from ps2 device 1 (no device driver yet)", TM_FORE_COL_GRAY);
-        }
-    }
-    ps2_device_drivers[ps2_first_device_driver]->irq_handler(0, data);
-}
-
-// ps2 second device
-void irq12_handler() {
-    uint8_t data = inb(PS2_DATA_PORT);
-    if (ps2_second_device_driver == ps2_device_drivers_amount) {
-        ps2_second_device_driver = device_find_driver(ps2_state.second_port_long_device_id, ps2_state.second_port_device_id);
-        if (ps2_second_device_driver == ps2_device_drivers_amount) {
-            print_string("\nreceived ", TM_FORE_COL_GRAY);
-            print_hex8(data, TM_FORE_COL_BLUE);
-            print_string(" from ps2 device 2 (no device driver yet)", TM_FORE_COL_GRAY);
-        }
-    }
-    ps2_device_drivers[ps2_second_device_driver]->irq_handler(1, data);
 }
 
 void ps2_set_read_timeout(uint32_t to) {
@@ -853,4 +832,40 @@ void ps2_declare_echo_success(uint8_t device) {
     print_string("\ndevice ", TM_FORE_COL_GRAY);
     print_hex8(device, TM_FORE_COL_GREEN);
     print_string(" declared echo success", TM_FORE_COL_GRAY);
+}
+
+void irq1_handler() {
+    uint8_t data = inb(PS2_DATA_PORT);
+    if (ps2_first_device_driver == ps2_device_drivers_amount) {
+        ps2_first_device_driver = device_find_driver(ps2_state.first_port_long_device_id, ps2_state.first_port_device_id);
+        if (ps2_first_device_driver == ps2_device_drivers_amount) {
+            print_string("\nreceived ", TM_FORE_COL_GRAY);
+            print_hex8(data, TM_FORE_COL_BLUE);
+            print_string(" from ps2 device 1 (no device driver yet)", TM_FORE_COL_GRAY);
+            return;
+        }
+    }
+    ps2_device_drivers[ps2_first_device_driver]->irq_handler(0, data);
+}
+void irq12_handler() {
+    uint8_t data = inb(PS2_DATA_PORT);
+    if (ps2_second_device_driver == ps2_device_drivers_amount) {
+        ps2_second_device_driver = device_find_driver(ps2_state.second_port_long_device_id, ps2_state.second_port_device_id);
+        if (ps2_second_device_driver == ps2_device_drivers_amount) {
+            print_string("\nreceived ", TM_FORE_COL_GRAY);
+            print_hex8(data, TM_FORE_COL_BLUE);
+            print_string(" from ps2 device 2 (no device driver yet)", TM_FORE_COL_GRAY);
+            return;
+        }
+    }
+    ps2_device_drivers[ps2_second_device_driver]->irq_handler(1, data);
+}
+
+static void ps2_echo_intervaled_callback(){
+    if (ps2_first_device_driver != ps2_device_drivers_amount) {
+        ps2_device_drivers[ps2_first_device_driver]->send_echo(0);
+    }
+    if (ps2_second_device_driver != ps2_device_drivers_amount) {
+        ps2_device_drivers[ps2_second_device_driver]->send_echo(1);
+    }
 }

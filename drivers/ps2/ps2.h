@@ -3,6 +3,9 @@
 #include <stdint.h>
 
 
+#define PS2_DEFAULT_READ_TIMEOUT 2
+#define PS2_DEFAULT_WRITE_TIMEOUT 2
+#define PS2_DEFAULT_ECHO_INTERVAL 20
 #define PS2_MAX_DEVICE_DRIVERS 256
 
 
@@ -25,12 +28,6 @@ uint8_t ps2_init();
 /// @param driver A pointer to a ps2_device_driver struct representing the driver.
 ///     The device driver must implement a send_echo functionality and an irq_handler.
 void ps2_install_device_driver(struct ps2_device_driver* driver);
-
-// ps2 first device
-void irq1_handler();
-
-// ps2 second device
-void irq12_handler();
 
 void ps2_set_read_timeout(uint32_t to);
 void ps2_set_write_timeout(uint32_t to);
@@ -64,3 +61,8 @@ uint8_t ps2_enable_scanning(uint8_t device);
 /// @brief Should be called by ps2 device drivers when an echo sent by it's send_echo sent a response
 /// @param device The device number (0 or 1)
 void ps2_declare_echo_success(uint8_t device);
+
+// ps2 first device
+void irq1_handler();
+// ps2 second device
+void irq12_handler();
