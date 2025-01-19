@@ -1,6 +1,6 @@
 #include "text_mode.h"
 #include "interrupts/isrs.h"
-#include "../drivers/ps2/ps2_interface.h"
+#include "../drivers/ps2/ps2.h"
 #include "../drivers/ps2/ps2_keyboard/ps2k.h"
 
 void kmain() {

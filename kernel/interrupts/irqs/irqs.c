@@ -2,7 +2,7 @@
 #include "../../../libc/io.h"
 #include "../../../drivers/pic/pic.h"
 #include "timer/timer.h"
-#include "../../../drivers/ps2/ps2_interface.h"
+#include "../../../drivers/ps2/ps2.h"
 #include "../../text_mode.h"
 #include <stdint.h>
 
