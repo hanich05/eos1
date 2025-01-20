@@ -26,7 +26,6 @@ struct ps2k_command {
 };
 
 struct ps2k_device {
-    uint8_t scanning_enabled_before_disable     : 1;
     uint8_t scanning_enabled                    : 1;
     uint8_t waiting_for_enable_scanning_ack     : 1;
     uint8_t waiting_for_disable_scanning_ack    : 1;
