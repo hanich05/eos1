@@ -76,10 +76,12 @@ struct ps2_controller_output_port {
 };
 
 struct ps2_device {
-    uint8_t port_working            : 1;
-    uint8_t timed_out               : 1;
-    uint8_t long_device_id          : 1;
-    uint8_t device_driver_not_found : 1;
+    uint8_t port_working                    : 1;
+    uint8_t timed_out                       : 1;
+    uint8_t long_device_id                  : 1;
+    uint8_t device_driver_not_found         : 1;
+    uint8_t input_arrived_since_last_echo   : 1;
+    uint8_t echo_succeeded                  : 1;
     uint8_t device_id[2];
     uint8_t reset_response[2];
     uint16_t device_driver; // ps2_device_drivers_amount if not set yet
@@ -141,7 +143,8 @@ static void ps2_get_device_id(uint8_t device);
 
 uint8_t ps2_init();
 
-static void ps2_echo_intervaled_callback();
+static void ps2_send_echo_intervaled_callback();
+static void ps2_check_echo_intervaled_callback();
 
 
 uint8_t ps2_controller_working;
@@ -150,7 +153,8 @@ struct ps2_device ps2_devices[2];
 
 static uint32_t ps2_read_timeout;
 static uint32_t ps2_write_timeout;
-static uint32_t ps2_echo_intervaled_callback_uid;
+static uint32_t ps2_send_echo_intervaled_callback_uid;
+static uint32_t ps2_check_echo_intervaled_callback_uid;
 
 static struct ps2_device_driver* ps2_device_drivers[PS2_MAX_DEVICE_DRIVERS];
 static uint16_t ps2_device_drivers_amount = 0;
@@ -367,8 +371,8 @@ static void ps2_get_device_id(uint8_t device) {
     ps2_devices[device].device_id[1] = 0x00;
 
     // send Disable-Scanning command
-    if (ps2_diable_scanning(device) != 0) {
-    // if (ps2_first_port_diable_scanning() != 0) {
+    if (ps2_disable_scanning(device) != 0) {
+    // if (ps2_first_port_disable_scanning() != 0) {
         // timed out
         ps2_devices[0].port_working = 0;
         ps2_devices[0].timed_out = 1;
@@ -411,7 +415,8 @@ uint8_t ps2_init() {
 
     ps2_read_timeout  = PS2_DEFAULT_READ_TIMEOUT;
     ps2_write_timeout = PS2_DEFAULT_WRITE_TIMEOUT;
-    ps2_echo_intervaled_callback_uid = 0; // doesn't exist yet
+    ps2_send_echo_intervaled_callback_uid = 0; // doesn't exist yet
+    ps2_check_echo_intervaled_callback_uid = 0; // doesn't exist yet
     
     // TODO: how tf do i disable/enable usb legacy support???
 
@@ -529,7 +534,8 @@ uint8_t ps2_init() {
     ps2_write_controller_config(cc);
 
     // set intervaled callback
-    ps2_echo_intervaled_callback_uid = install_intervaled_callback(&ps2_echo_intervaled_callback, PS2_DEFAULT_ECHO_INTERVAL, 0);
+    ps2_send_echo_intervaled_callback_uid = install_intervaled_callback(&ps2_send_echo_intervaled_callback, PS2_DEFAULT_ECHO_INTERVAL, 0);
+    ps2_check_echo_intervaled_callback_uid = install_intervaled_callback(&ps2_check_echo_intervaled_callback, PS2_DEFAULT_ECHO_INTERVAL, PS2_DEFAULT_ECHO_TIMEOUT);
 
     // init success
     return 0;
@@ -649,7 +655,7 @@ uint8_t ps2_test_port(uint8_t port) {
     return 2;
 }
 
-uint8_t ps2_diable_scanning(uint8_t device) {
+uint8_t ps2_disable_scanning(uint8_t device) {
     return ps2_send_byte(device, 0xf5);
 }
 uint8_t ps2_enable_scanning(uint8_t device) {
@@ -658,12 +664,51 @@ uint8_t ps2_enable_scanning(uint8_t device) {
 
 void ps2_declare_echo_success(uint8_t device) {
     print_string("\ndevice ", TM_FORE_COL_GRAY);
-    print_hex8(device, TM_FORE_COL_GREEN);
+    print_hex8(device, TM_FORE_COL_MAGENTA);
     print_string(" declared echo success", TM_FORE_COL_GRAY);
+    ps2_devices[device].echo_succeeded = 1;
+}
+static void ps2_send_echo_intervaled_callback() {
+    ps2_device_find_driver(0);
+    ps2_device_find_driver(1);
+    if (ps2_devices[0].device_driver_not_found == 0) {
+        if (ps2_devices[0].input_arrived_since_last_echo == 0) {
+            // echo needed
+            ps2_device_drivers[ps2_devices[0].device_driver]->send_echo(0);
+            ps2_devices[0].echo_succeeded = 0;
+        }else {
+            // device has communicated in the last (ps2_echo_interval-ps2_echo_timeout) ticks. no need for echo
+            print_string("\ndeivce 0x00 - no need for echo", TM_FORE_COL_GRAY);
+            ps2_devices[0].echo_succeeded = 1;
+        }
+    }
+    if (ps2_devices[1].device_driver_not_found == 0) {
+        if (ps2_devices[1].input_arrived_since_last_echo == 0) {
+            // echo needed
+            ps2_device_drivers[ps2_devices[1].device_driver]->send_echo(1);
+            ps2_devices[1].echo_succeeded = 0;
+        }else {
+            // device has communicated in the last (ps2_echo_interval-ps2_echo_timeout) ticks. no need for echo
+            print_string("\ndeivce 0x01 - no need for echo", TM_FORE_COL_GRAY);
+            ps2_devices[1].echo_succeeded = 1;
+        }
+    }
+}
+static void ps2_check_echo_intervaled_callback() {
+    if (ps2_devices[0].echo_succeeded == 0 && ps2_devices[0].device_driver_not_found == 0) {
+        print_string("\ndevice 0 did not echo back", TM_FORE_COL_RED);
+    }
+    if (ps2_devices[1].echo_succeeded == 0 && ps2_devices[1].device_driver_not_found == 0) {
+        print_string("\ndevice 1 did not echo back", TM_FORE_COL_RED);
+    }
+    ps2_devices[0].input_arrived_since_last_echo = 0;
+    ps2_devices[1].input_arrived_since_last_echo = 0;
 }
 
 static void ps2_handle_device_irq(uint8_t device) {
     uint8_t data = inb(PS2_DATA_PORT);
+    ps2_devices[device].input_arrived_since_last_echo = 1;
+
     ps2_device_find_driver(device);
     if (ps2_devices[device].device_driver_not_found == 1) {
         print_string("\nreceived ", TM_FORE_COL_GRAY);
@@ -678,15 +723,4 @@ void irq1_handler() {
 }
 void irq12_handler() {
     ps2_handle_device_irq(1);
-}
-
-static void ps2_echo_intervaled_callback(){
-    ps2_device_find_driver(0);
-    ps2_device_find_driver(1);
-    if (ps2_devices[0].device_driver_not_found == 0) {
-        ps2_device_drivers[ps2_devices[0].device_driver]->send_echo(0);
-    }
-    if (ps2_devices[1].device_driver_not_found == 0) {
-        ps2_device_drivers[ps2_devices[1].device_driver]->send_echo(1);
-    }
 }

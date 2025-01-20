@@ -6,6 +6,7 @@
 #define PS2_DEFAULT_READ_TIMEOUT 2
 #define PS2_DEFAULT_WRITE_TIMEOUT 2
 #define PS2_DEFAULT_ECHO_INTERVAL 20
+#define PS2_DEFAULT_ECHO_TIMEOUT 4
 #define PS2_MAX_DEVICE_DRIVERS 256
 
 
@@ -53,7 +54,7 @@ uint8_t ps2_test_port(uint8_t port);
 
 /// @param device The device number (0 or 1)
 /// @returns 2 if device does not exist, 1 on time-out, otherwise 0
-uint8_t ps2_diable_scanning(uint8_t device);
+uint8_t ps2_disable_scanning(uint8_t device);
 /// @param device The device number (0 or 1)
 /// @returns 2 if device does not exist, 1 on time-out, otherwise 0
 uint8_t ps2_enable_scanning(uint8_t device);
