@@ -77,6 +77,7 @@ struct ps2_controller_output_port {
 
 struct ps2_device {
     uint8_t port_working                    : 1;
+    uint8_t device_working                  : 1;
     uint8_t timed_out                       : 1;
     uint8_t long_device_id                  : 1;
     uint8_t device_driver_not_found         : 1;
@@ -330,7 +331,7 @@ static void ps2_reset_device(uint8_t device) {
     // send reset command
     if (ps2_send_byte(device, 0xff) != 0) {
         // timed out
-        ps2_devices[device].port_working = 0;
+        ps2_devices[device].device_working = 0;
         ps2_devices[device].timed_out = 1;
         return;
     }
@@ -341,12 +342,12 @@ static void ps2_reset_device(uint8_t device) {
     ps2_devices[device].reset_response[0] = inb(PS2_DATA_PORT);
     if (ps2_devices[device].reset_response[0] == 0xfc) {
         // self test failed
-        ps2_devices[device].port_working = 0;
+        ps2_devices[device].device_working = 0;
         return;
     }
     if (ps2_devices[device].reset_response[0] != 0xfa && ps2_devices[device].reset_response[0] != 0xaa) {
         // invalid response
-        ps2_devices[device].port_working = 0;
+        ps2_devices[device].device_working = 0;
         return;
     }
     
@@ -356,7 +357,7 @@ static void ps2_reset_device(uint8_t device) {
         (ps2_devices[device].reset_response[1] != 0xfa && ps2_devices[device].reset_response[1] != 0xaa) ||
         ps2_devices[device].reset_response[0] == ps2_devices[device].reset_response[1]) {
         // invalid response
-        ps2_devices[device].port_working = 0;
+        ps2_devices[device].device_working = 0;
         return;
     }
     
@@ -372,9 +373,8 @@ static void ps2_get_device_id(uint8_t device) {
 
     // send Disable-Scanning command
     if (ps2_disable_scanning(device) != 0) {
-    // if (ps2_first_port_disable_scanning() != 0) {
         // timed out
-        ps2_devices[0].port_working = 0;
+        ps2_devices[0].device_working = 0;
         ps2_devices[0].timed_out = 1;
         return;
     }
@@ -384,7 +384,7 @@ static void ps2_get_device_id(uint8_t device) {
     // send Identity command
     if (ps2_send_byte(device, 0xf2) != 0) {
         // timed out
-        ps2_devices[0].port_working = 0;
+        ps2_devices[0].device_working = 0;
         ps2_devices[0].timed_out = 1;
         return;
     }
@@ -395,7 +395,7 @@ static void ps2_get_device_id(uint8_t device) {
     ps2_wait_for_read();
     ps2_devices[device].device_id[0] = inb(PS2_DATA_PORT);
 
-    // get second device-id byte (with time out beacuse it may not arrive)
+    // get device-id byte (with time out beacuse it may not arrive)
     if (ps2_wait_for_read_with_timeout() == 0) {
         ps2_devices[device].long_device_id = 1;
         ps2_devices[device].device_id[1] = inb(PS2_DATA_PORT);
@@ -404,7 +404,7 @@ static void ps2_get_device_id(uint8_t device) {
     // send Enable-Scanning command
     if (ps2_enable_scanning(device) != 0) {
         // timed out
-        ps2_devices[0].port_working = 0;
+        ps2_devices[0].device_working = 0;
         ps2_devices[0].timed_out = 1;
         return;
     }
@@ -470,18 +470,23 @@ uint8_t ps2_init() {
     // test first port
     if (ps2_test_port(0) == 0x00) {
         ps2_devices[0].port_working = 1;
+        ps2_devices[0].device_working = 1;
     }else {
         ps2_devices[0].port_working = 0;
+        ps2_devices[0].device_working = 0;
     }
     // test second port (if dual)
     if (ps2_controller_is_dual == 1) {
         if (ps2_test_port(1) == 0x00) {
             ps2_devices[1].port_working = 1;
+            ps2_devices[1].device_working = 1;
         }else {
             ps2_devices[1].port_working = 0;
+            ps2_devices[1].device_working = 0;
         }
     }else {
         ps2_devices[1].port_working = 0;
+        ps2_devices[1].device_working = 0;
     }
     // if both ports dont work, give up
     if (ps2_devices[0].port_working == 0 && ps2_devices[1].port_working == 0) {
@@ -489,7 +494,7 @@ uint8_t ps2_init() {
         return 2;
     }
     
-    // reenable devices
+    // reenable ports
     if (ps2_devices[0].port_working == 1){
         ps2_enable_port(0);
     }
@@ -497,30 +502,20 @@ uint8_t ps2_init() {
         ps2_enable_port(1);
     }
 
-    // reset devices
+    // reset devices (updates ps2_devices[x].device_working)
     if (ps2_devices[0].port_working == 1) {
         ps2_reset_device(0);
     }
     if (ps2_devices[1].port_working == 1) {
         ps2_reset_device(1);
     }
-    // if both ports dont work, give up
-    if (ps2_devices[0].port_working == 0 && ps2_devices[1].port_working == 0) {
-        // error
-        return 3;
-    }
 
-    // get device ids
-    if (ps2_devices[0].port_working == 1) {
+    // get device ids (updates ps2_devices[x].device_working)
+    if (ps2_devices[0].device_working == 1) {
         ps2_get_device_id(0);
     }
-    if (ps2_devices[1].port_working == 1) {
+    if (ps2_devices[1].device_working == 1) {
         ps2_get_device_id(1);
-    }
-    // if both ports dont work, give up
-    if (ps2_devices[0].port_working == 0 && ps2_devices[1].port_working == 0) {
-        // error
-        return 4;
     }
 
     // reenable IRQs
@@ -536,6 +531,29 @@ uint8_t ps2_init() {
     // set intervaled callback
     ps2_send_echo_intervaled_callback_uid = install_intervaled_callback(&ps2_send_echo_intervaled_callback, PS2_DEFAULT_ECHO_INTERVAL, 0);
     ps2_check_echo_intervaled_callback_uid = install_intervaled_callback(&ps2_check_echo_intervaled_callback, PS2_DEFAULT_ECHO_INTERVAL, PS2_DEFAULT_ECHO_TIMEOUT);
+
+    print_string("\nps2 initialized:", TM_FORE_COL_GRAY);
+    for (uint8_t i = 0; i < 2; i++) {
+        print_string("\n- port ", TM_FORE_COL_GRAY);
+        print_hex8(i, TM_FORE_COL_MAGENTA);
+        if (ps2_devices[i].port_working == 0) {
+            print_string(" doesn't work", TM_FORE_COL_RED);
+        }else {
+            print_string(" works", TM_FORE_COL_GRAY);
+        }
+        print_string("\n- device ", TM_FORE_COL_GRAY);
+        print_hex8(i, TM_FORE_COL_MAGENTA);
+        if (ps2_devices[i].device_working == 0) {
+            print_string(" doesn't work", TM_FORE_COL_RED);
+        }else {
+            print_string(" works with device-id ", TM_FORE_COL_GRAY);
+            print_hex8(ps2_devices[i].device_id[0], TM_FORE_COL_CYAN);
+            if (ps2_devices[i].long_device_id == 1) {
+                print_char(' ', 0);
+                print_hex8(ps2_devices[i].device_id[1], TM_FORE_COL_CYAN);
+            }
+        }
+    }
 
     // init success
     return 0;
@@ -577,13 +595,29 @@ static uint16_t ps2_device_id_find_driver(uint8_t long_device_id, uint8_t* devic
     return ps2_device_drivers_amount;
 }
 static void ps2_device_find_driver(uint8_t device) {
+    // already searched
     if (ps2_devices[device].device_driver_not_found == 1) return;
-    
+    // already found
     if (ps2_devices[device].device_driver != ps2_device_drivers_amount) return;
 
+    // find
     ps2_devices[device].device_driver = ps2_device_id_find_driver(ps2_devices[device].long_device_id, ps2_devices[device].device_id);
+    
+    // did not find
     if (ps2_devices[device].device_driver == ps2_device_drivers_amount) {
         ps2_devices[device].device_driver_not_found = 1;
+        return;
+    }
+
+    // found - init device driver
+    uint8_t driver_on_connect_response = ps2_device_drivers[ps2_devices[device].device_driver]->on_connect(device);
+    // check if device is working
+    if (driver_on_connect_response != 0) {
+        print_string("\ndevice driver ", TM_FORE_COL_RED);
+        print_hex8(ps2_devices[device].device_driver, TM_FORE_COL_MAGENTA);
+        print_string(" encountered an error when connecting to device ", TM_FORE_COL_RED);
+        print_hex8(device, TM_FORE_COL_MAGENTA);
+        ps2_devices[device].device_working = 0;
     }
 }
 
@@ -663,34 +697,34 @@ uint8_t ps2_enable_scanning(uint8_t device) {
 }
 
 void ps2_declare_echo_success(uint8_t device) {
-    print_string("\ndevice ", TM_FORE_COL_GRAY);
-    print_hex8(device, TM_FORE_COL_MAGENTA);
-    print_string(" declared echo success", TM_FORE_COL_GRAY);
     ps2_devices[device].echo_succeeded = 1;
 }
 static void ps2_send_echo_intervaled_callback() {
-    ps2_device_find_driver(0);
-    ps2_device_find_driver(1);
-    if (ps2_devices[0].device_driver_not_found == 0) {
-        if (ps2_devices[0].input_arrived_since_last_echo == 0) {
-            // echo needed
-            ps2_device_drivers[ps2_devices[0].device_driver]->send_echo(0);
-            ps2_devices[0].echo_succeeded = 0;
-        }else {
-            // device has communicated in the last (ps2_echo_interval-ps2_echo_timeout) ticks. no need for echo
-            print_string("\ndeivce 0x00 - no need for echo", TM_FORE_COL_GRAY);
-            ps2_devices[0].echo_succeeded = 1;
+    if (ps2_devices[0].device_working == 1) {
+        ps2_device_find_driver(0);
+        if (ps2_devices[0].device_driver_not_found == 0) {
+            if (ps2_devices[0].input_arrived_since_last_echo == 0) {
+                // echo needed
+                ps2_device_drivers[ps2_devices[0].device_driver]->send_echo(0);
+                ps2_devices[0].echo_succeeded = 0;
+            }else {
+                // device has communicated in the last (ps2_echo_interval-ps2_echo_timeout) ticks. no need for echo
+                ps2_devices[0].echo_succeeded = 1;
+            }
         }
     }
-    if (ps2_devices[1].device_driver_not_found == 0) {
-        if (ps2_devices[1].input_arrived_since_last_echo == 0) {
-            // echo needed
-            ps2_device_drivers[ps2_devices[1].device_driver]->send_echo(1);
-            ps2_devices[1].echo_succeeded = 0;
-        }else {
-            // device has communicated in the last (ps2_echo_interval-ps2_echo_timeout) ticks. no need for echo
-            print_string("\ndeivce 0x01 - no need for echo", TM_FORE_COL_GRAY);
-            ps2_devices[1].echo_succeeded = 1;
+
+    if (ps2_devices[1].device_working == 1) {
+        ps2_device_find_driver(1);
+        if (ps2_devices[1].device_driver_not_found == 0) {
+            if (ps2_devices[1].input_arrived_since_last_echo == 0) {
+                // echo needed
+                ps2_device_drivers[ps2_devices[1].device_driver]->send_echo(1);
+                ps2_devices[1].echo_succeeded = 0;
+            }else {
+                // device has communicated in the last (ps2_echo_interval-ps2_echo_timeout) ticks. no need for echo
+                ps2_devices[1].echo_succeeded = 1;
+            }
         }
     }
 }
@@ -707,16 +741,35 @@ static void ps2_check_echo_intervaled_callback() {
 
 static void ps2_handle_device_irq(uint8_t device) {
     uint8_t data = inb(PS2_DATA_PORT);
+
+    if (ps2_devices[device].device_working == 0) {
+        print_string("\nreceived ", TM_FORE_COL_RED);
+        print_hex8(data, TM_FORE_COL_BROWN);
+        print_string(" from non working ps2 device ", TM_FORE_COL_RED);
+        print_hex8(device, TM_FORE_COL_MAGENTA);
+        return;
+    }
+
     ps2_devices[device].input_arrived_since_last_echo = 1;
 
     ps2_device_find_driver(device);
     if (ps2_devices[device].device_driver_not_found == 1) {
         print_string("\nreceived ", TM_FORE_COL_GRAY);
-        print_hex8(data, TM_FORE_COL_BLUE);
-        print_string(" from ps2 device 0 (no device driver yet)", TM_FORE_COL_GRAY);
+        print_hex8(data, TM_FORE_COL_BROWN);
+        print_string(" from ps2 device ", TM_FORE_COL_GRAY);
+        print_hex8(device, TM_FORE_COL_MAGENTA);
+        print_string(" (no device driver yet)", TM_FORE_COL_GRAY);
         return;
     }
-    ps2_device_drivers[ps2_devices[device].device_driver]->irq_handler(device, data);
+    uint8_t irq_handler_response = ps2_device_drivers[ps2_devices[device].device_driver]->irq_handler(device, data);
+    // check if device is working
+    if (irq_handler_response != 0) {
+        print_string("\ndevice driver ", TM_FORE_COL_RED);
+        print_hex8(ps2_devices[device].device_driver, TM_FORE_COL_MAGENTA);
+        print_string(" encountered an error when handling an irq from device ", TM_FORE_COL_RED);
+        print_hex8(device, TM_FORE_COL_MAGENTA);
+        ps2_devices[device].device_working = 0;
+    }
 }
 void irq1_handler() {
     ps2_handle_device_irq(0);

@@ -35,6 +35,10 @@ sector_1:
     mov ah, 0x02
     int 0x13
 
+    ; save results
+    mov [read_return_code], ah
+    mov [read_actual_sectors_read_count], al
+
     ; if a read error ocours, carry flag is set
     jc read_error
     ; sectors read amount is saved in al reg
@@ -44,42 +48,76 @@ sector_1:
     jne read_error
 
     ; no read errors
-    ; set read_res
-    mov byte [read_res], 0x01
-    ; print success message
-    mov bx, read_suc_str
-    jmp print_read_res_str
-
-read_error:
-    ; error ocoured. print error message
-    mov bx, read_err_str
-
-print_read_res_str:
     ; call BIOS interrupt 0x10 ah=0x0e - print char
     mov ah, 0x0e
-print_read_res_str_loop:
+    mov bx, read_suc_str
+print_read_suc_str_loop:
     mov al, [bx]
     int 0x10
     inc bx
     cmp byte [bx], 0x00
-    jne print_read_res_str_loop
+    jne print_read_suc_str_loop
     
-    ; jump if read succedded
-    cmp byte [read_res], 0x00
-    jne read_success
+    ; jmp to the kernel setup code (kernel_entry)
+    jmp KERNEL_LOCATION
+
+read_error:
+    ; call BIOS interrupt 0x10 ah=0x0e - print char
+    mov ah, 0x0e
+    mov bx, read_err_str
+print_read_err_str_loop:
+    mov al, [bx]
+    int 0x10
+    inc bx
+    cmp byte [bx], 0x00
+    jne print_read_err_str_loop
+
+    mov bh, [read_return_code]
+    call print_hex8
+
+    ; print (' ')
+    mov al, 0x20
+    mov ah, 0x0e
+    int 0x10
+    
+    mov bh, [read_actual_sectors_read_count]
+    call print_hex8
 
     ; infinite loop
     jmp $
 
-read_success:
-    ; jmp to the kernel setup code (kernel_entry)
-    jmp KERNEL_LOCATION
+; expects the value to be printed to be in bh
+print_hex8:
+    mov ah, 0x0e
+    mov bl, 0x02
+print_hex8_loop:
+    mov al, bh
+    and al, 0xf0
+    shr al, 0x04
+    cmp al, 0x09
+    jg print_hex8_print_ab
+print_hex8_print_01:
+    add al, 0x30 ; += '0'
+    jmp print_hex8_print_char
+print_hex8_print_ab:
+    sub al, 0x0a ; -= 10
+    add al, 0x41 ; += 'A'
+print_hex8_print_char:
+    int 0x10
+    ;
+    shl bh, 0x04
+    dec bl
+    cmp bl, 0x00
+    jne print_hex8_loop
+    ret
 
 
-read_res:
-    db 0x00 ; will be set to 1 if read succeded
+read_return_code:
+    db 0x00
+read_actual_sectors_read_count:
+    db 0x00
 read_err_str:
-    db "BIOS hard disk read error", 0x00
+    db "BIOS hard disk read error ", 0x00
 read_suc_str:
     db "BIOS hard disk read success", 0x00
 drive_num:

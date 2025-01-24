@@ -13,10 +13,13 @@
 struct ps2_device_driver {
     uint8_t long_device_id  : 1;
     uint8_t device_id[2];
-    // when the device echos back the handler should call 
+    // when the device echos back the handler should call ps2_declare_echo_success
     void (*send_echo)(uint8_t device);
-    // shoult return 1 on time-out or 0 on success
+    // should return 1 if the device is not working or 0 on success
     uint8_t (*irq_handler)(uint8_t device, uint8_t data);
+    // called when a ps2 device selects this driver
+    // should return 1 if the device is not working or 0 on success
+    uint8_t (*on_connect)(uint8_t device);
 };
 
 

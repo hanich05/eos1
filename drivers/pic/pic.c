@@ -1,5 +1,3 @@
-#pragma once
-
 // from: https://wiki.osdev.org/8259_PIC#Articles
 
 #include "pic.h"

@@ -10,13 +10,19 @@ os.bin: boot/boot.bin kernel/full_kernel.bin set_sectors_count_byte.bash pad_las
 boot/boot.bin: boot/mbr.s
 	nasm $(DEBUG?) $< -o $@ -f bin
 
-kernel/full_kernel.bin: kernel/kernel_entry.o kernel/kernel.o drivers/ps2/ps2_keyboard/ps2k.o drivers/ps2/ps2.o drivers/pic/pic.o kernel/interrupts/irqs/timer/timer.o kernel/interrupts/irqs/irqs.o kernel/interrupts/isrs.o kernel/interrupts/isr_stubs.o kernel/interrupts/idt.o kernel/text_mode.o libc/io.o libc/memmove.o libc/memset.o
+kernel/full_kernel.bin: kernel/kernel_entry.o kernel/kernel.o drivers/ps2/ps2_keyboard/keys.o drivers/ps2/ps2_keyboard/ps2k_scancodes.o drivers/ps2/ps2_keyboard/ps2k.o drivers/ps2/ps2.o drivers/pic/pic.o kernel/interrupts/irqs/timer/timer.o kernel/interrupts/irqs/irqs.o kernel/interrupts/isrs.o kernel/interrupts/isr_stubs.o kernel/interrupts/idt.o kernel/text_mode.o libc/io.o libc/memmove.o libc/memset.o
 	$(LD) -Ttext 0x1000 $^ --oformat binary -o $@
 
 kernel/kernel_entry.o: kernel/kernel_entry.s kernel/gdt.s
 	nasm $(DEBUG?) $< -f elf -o $@
 
 kernel/kernel.o: kernel/kernel.c kernel/text_mode.h kernel/interrupts/isrs.h drivers/ps2/ps2.h drivers/ps2/ps2_keyboard/ps2k.h
+	$(CC) $(DEBUG?) -ffreestanding -m32 -g -c $< -o $@
+
+drivers/ps2/ps2_keyboard/keys.o: drivers/ps2/ps2_keyboard/keys.c drivers/ps2/ps2_keyboard/keys.h drivers/ps2/ps2_keyboard/keys.h kernel/text_mode.h
+	$(CC) $(DEBUG?) -ffreestanding -m32 -g -c $< -o $@
+
+drivers/ps2/ps2_keyboard/ps2k_scancodes.o: drivers/ps2/ps2_keyboard/ps2k_scancodes.c drivers/ps2/ps2_keyboard/ps2k_scancodes.h drivers/ps2/ps2_keyboard/keys.h
 	$(CC) $(DEBUG?) -ffreestanding -m32 -g -c $< -o $@
 
 drivers/ps2/ps2_keyboard/ps2k.o: drivers/ps2/ps2_keyboard/ps2k.c drivers/ps2/ps2_keyboard/ps2k.h drivers/ps2/ps2.h libc/memmove.h kernel/text_mode.h
@@ -62,5 +68,5 @@ debug: os.bin
 	qemu-system-i386 os.bin -s -S &
 	gdb --init-eval-command="target remote localhost:1234" --eval-command="symbol-file os.bin"
 
-clean: $(wildcard *.o */*.o */*/*.o)
-	rm -f "boot/boot.bin" "kernel/full_kernel.bin" $^
+clean: $(wildcard *.o */*.o */*/*.o */*/*/*.o)
+	rm -f "os.bin" "boot/boot.bin" "kernel/full_kernel.bin" $^
