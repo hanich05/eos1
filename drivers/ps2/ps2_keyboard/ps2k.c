@@ -268,9 +268,6 @@ static uint8_t ps2k_driver_irq_handler(uint8_t device, uint8_t data) {
     // device is always 0 or 1
     struct ps2k_device* devc = &(ps2k_devices[device]);
 
-    print_char('\n', 0);
-    print_hex8(data, TM_FORE_COL_WHITE);
-
     uint8_t irq_handled = 0;
     if (devc->command_queue_length != 0 && devc->waiting_for_response == 1) { // check for a command waiting for response
         // command waiting for response
